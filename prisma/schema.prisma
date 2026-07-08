@@ -1,0 +1,25 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+// 上にある generator や datasource の部分は消さずに残しておくれ
+
+model User {
+  id   Int    @id @default(autoincrement())
+  name String
+  age  Int?
+}
+
+model Task {
+  id                Int      @id @default(autoincrement())
+  title             String
+  deadline          DateTime
+  estimated_minutes Int
+  status            String   @default("pending") // "pending" または "completed"
+  parent_id         Int?     // 親タスクのID（なければ空）
+}

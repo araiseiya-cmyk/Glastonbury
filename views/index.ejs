@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIタスク管理アプリ</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 0 10px; }
+    form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+    .task-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+    .completed { text-decoration: line-through; color: #888; }
+    .badge { background: #ff4757; color: white; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <h1>タスク管理（自動優先順位つき）</h1>
+
+  <form id="taskForm">
+    <input type="text" id="title" placeholder="タスク名" required>
+    <label>期限: <input type="datetime-local" id="deadline" required></label>
+    <input type="number" id="estimated_minutes" placeholder="見積時間（分）" required>
+    <input type="number" id="parent_id" placeholder="親タスクID（あれば）">
+    <button type="submit">タスクを追加</button>
+  </form>
+
+  <h2>タスク一覧（おすすめ順）</h2>
+  <div id="taskList"></div>
+
+  <script>
+    // 画面が開いたときと、データが更新されたときにタスク一覧を再読み込みする関数
+    async function loadTasks() {
+      const response = await fetch('/tasks');
+      const tasks = await response.json();
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = '';
+
+      tasks.forEach((task, index) => {
+        const div = document.createElement('div');
+        div.className = `task-item ${task.status === 'completed' ? 'completed' : ''}`;
+        
+        // 上位3つの未完了タスクに「おすすめ」バッジをつける
+        const badge = (index < 3 && task.status === 'pending') ? '<span class="badge">最優先！</span> ' : '';
+
+        div.innerHTML = `
+          <div>
+            ${badge}<strong>${task.title}</strong> <small>(ID: ${task.id})</small><br>
+            <small>期限: ${new Date(task.deadline).toLocaleString()} | 見積: ${task.estimated_minutes}分</small>
+            ${task.parent_id ? `<br><small style="color:gray;">親タスク: ID ${task.parent_id}</small>` : ''}
+          </div>
+          <div>
+            ${task.status === 'pending' 
+              ? `<button onclick="completeTask(${task.id})">完了する</button>` 
+              : '<span>✅ 完了</span>'}
+          </div>
+        `;
+        taskList.appendChild(div);
+      });
+    }
+
+    // タスクの新規登録
+    document.getElementById('taskForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('title').value;
+      const deadline = document.getElementById('deadline').value;
+      const estimated_minutes = document.getElementById('estimated_minutes').value;
+      const parent_id = document.getElementById('parent_id').value;
+
+      await fetch('/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, deadline, estimated_minutes, parent_id })
+      });
+
+      document.getElementById('taskForm').reset();
+      loadTasks(); // 一覧を更新
+    });
+
+    // タスクを完了にする
+    async function completeTask(id) {
+      await fetch(`/tasks/${id}`, {
+        method: 'PATCH'
+      });
+      loadTasks(); // 一覧を更新
+    }
+
+    // 最初にページを開いたときにタスクを読み込む
+    loadTasks();
+  </script>
+</body>
+</html>
