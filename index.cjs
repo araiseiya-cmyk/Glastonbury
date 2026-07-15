@@ -1,21 +1,32 @@
-import { PrismaClient } from '@prisma/client';
-import express from 'express';
-import path from 'path';
+const { PrismaClient } = require('@prisma/client');
+// ↓ ここを「PrismaLibSql」(末尾は小文字のql) に変更します！
+const { PrismaLibSql } = require('@prisma/adapter-libsql'); 
+const { createClient } = require('@libsql/client');
+const express = require('express');
+const path = require('path');
+
+// 1. 素のSQLite(LibSQL)クライアントを作成
+const libsql = createClient({
+  url: 'file:./prisma/dev.db', 
+});
+
+// 2. アダプターを介してPrismaClientを初期化（ここも「PrismaLibSql」にします）
+const adapter = new PrismaLibSql(libsql);
+const prisma = new PrismaClient({ adapter });
 
 const app = express();
-const prisma = new PrismaClient();
 
 // EJSのテンプレートエンジンを設定
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../views')); // 環境に合わせてパスは調整してください
+app.set('views', path.join(__dirname, './views')); // Codespaces用に少しパス調整しました
 
 // リクエストの解析設定
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // --- ロジック：優先順位の計算 ---
-// 「期限までの残り時間」から「見積時間」を引いた猶予時間が短いほど、優先順位を高く（スコアを小さく）します
-function calculatePriorityScore(task: any): number {
+// 型定義（: any, : number）をきれいに削除しました
+function calculatePriorityScore(task) {
   const now = new Date().getTime();
   const deadline = new Date(task.deadline).getTime();
   
@@ -23,7 +34,6 @@ function calculatePriorityScore(task: any): number {
   const remainingMinutes = (deadline - now) / (1000 * 60);
   
   // 猶予時間 = 残り時間 - 見積時間
-  // この値が小さい（またはマイナス＝手遅れ）ほど、すぐにやるべきタスク
   return remainingMinutes - task.estimated_minutes;
 }
 

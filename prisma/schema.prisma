@@ -1,10 +1,9 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 // 上にある generator や datasource の部分は消さずに残しておくれ
