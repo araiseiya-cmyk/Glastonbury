@@ -1,72 +1,54 @@
 const { PrismaClient } = require('@prisma/client');
-// ↓ ここを「PrismaLibSql」(末尾は小文字のql) に変更します！
-const { PrismaLibSql } = require('@prisma/adapter-libsql'); 
-const { createClient } = require('@libsql/client');
 const express = require('express');
 const path = require('path');
 
-// 1. 素のSQLite(LibSQL)クライアントを作成
-const libsql = createClient({
-  url: 'file:./prisma/dev.db', 
-});
-
-// 2. アダプターを介してPrismaClientを初期化（ここも「PrismaLibSql」にします）
-const adapter = new PrismaLibSql(libsql);
-const prisma = new PrismaClient({ adapter });
+// 💡 安定版なので、これだけで完璧に sqlite (dev.db) に繋がります！
+const prisma = new PrismaClient();
 
 const app = express();
 
-// EJSのテンプレートエンジンを設定
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, './views')); // Codespaces用に少しパス調整しました
+app.set('views', path.join(__dirname, './views'));
 
-// リクエストの解析設定
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- ロジック：優先順位の計算 ---
-// 型定義（: any, : number）をきれいに削除しました
+// （これより下のロジックや API ルートは、今のままで一切変更しなくて大丈夫です！）
+
 function calculatePriorityScore(task) {
   const now = new Date().getTime();
   const deadline = new Date(task.deadline).getTime();
-  
-  // 期限までの残り時間（分）
   const remainingMinutes = (deadline - now) / (1000 * 60);
-  
-  // 猶予時間 = 残り時間 - 見積時間
   return remainingMinutes - task.estimated_minutes;
 }
 
-// ページ表示（フロントエンドへの受け渡し）
 app.get('/', async (req, res) => {
   res.render('index');
 });
 
-// 1. タスクの一覧を取得する (API)
+// 1. タスクの一覧を取得する
 app.get('/tasks', async (req, res) => {
   try {
     const tasks = await prisma.task.findMany();
-    
-    // 優先順位スコアを計算して、昇順（猶予が少ない順）に並び替え
     const sortedTasks = tasks.map(task => ({
       ...task,
       priorityScore: calculatePriorityScore(task)
     })).sort((a, b) => a.priorityScore - b.priorityScore);
-
     res.json(sortedTasks);
   } catch (error) {
+    console.error('Fetch Error:', error);
     res.status(500).json({ error: 'タスクの取得に失敗しました' });
   }
 });
 
-// 2. 新しいタスクを作る (API)
+// 2. 新しいタスクを作る
 app.post('/tasks', async (req, res) => {
   const { title, deadline, estimated_minutes, parent_id } = req.body;
   try {
     const newTask = await prisma.task.create({
       data: {
         title,
-        deadline: new Date(deadline),
+        deadline: new Date(deadline).toISOString(),
         estimated_minutes: parseInt(estimated_minutes),
         status: 'pending',
         parent_id: parent_id ? parseInt(parent_id) : null
@@ -74,11 +56,12 @@ app.post('/tasks', async (req, res) => {
     });
     res.json(newTask);
   } catch (error) {
+    console.error('Create Error:', error);
     res.status(500).json({ error: 'タスクの作成に失敗しました' });
   }
 });
 
-// 3. タスクを更新する（完了にする） (API)
+// 3. タスクを更新する
 app.patch('/tasks/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -88,11 +71,12 @@ app.patch('/tasks/:id', async (req, res) => {
     });
     res.json(updatedTask);
   } catch (error) {
+    console.error('Update Error:', error);
     res.status(500).json({ error: 'タスクの更新に失敗しました' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 });

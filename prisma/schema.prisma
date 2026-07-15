@@ -1,24 +1,24 @@
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
 }
-
-// 上にある generator や datasource の部分は消さずに残しておくれ
-
-model User {
-  id   Int    @id @default(autoincrement())
-  name String
-  age  Int?
-}
+// ...（モデルの定義はそのまま）
 
 model Task {
   id                Int      @id @default(autoincrement())
   title             String
   deadline          DateTime
   estimated_minutes Int
-  status            String   @default("pending") // "pending" または "completed"
-  parent_id         Int?     // 親タスクのID（なければ空）
+  status            String   @default("pending")
+  parent_id         Int?
+}
+
+model User {
+  id   Int    @id @default(autoincrement())
+  name String
+  age  Int?
 }
