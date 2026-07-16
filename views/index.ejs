@@ -238,14 +238,15 @@
     const deadlineGroup = document.getElementById('deadlineGroup');
     const deadlineInput = document.getElementById('deadline');
     const recurrenceTypeSelect = document.getElementById('recurrence_type');
-    const recurrenceDayGroup = document.getElementById('recurrence_dayGroup');
+    // 💡 IDを正しい表記（recurrenceDayGroup）に修正！
+    const recurrenceDayGroup = document.getElementById('recurrenceDayGroup');
 
     isRecurringCheckbox.addEventListener('change', (e) => {
       if (e.target.checked) {
         recurringOptions.style.display = 'flex';
-        recurringOptions.style.styleDoc = 'flex-direction: column';
+        recurringOptions.style.flexDirection = 'column'; // 💡 styleDoc だった部分を修正
         deadlineGroup.style.opacity = '0.5';
-        deadlineInput.required = false; // 定期タスクの場合、日付は不要（自動生成されるため）
+        deadlineInput.required = false; 
       } else {
         recurringOptions.style.display = 'none';
         deadlineGroup.style.opacity = '1';
@@ -262,33 +263,43 @@
     });
 
     async function loadTasks() {
-      const response = await fetch('/tasks');
-      const tasks = await response.json();
-      const taskList = document.getElementById('taskList');
-      taskList.innerHTML = '';
+      try {
+        const response = await fetch('/tasks');
+        if (!response.ok) {
+          throw new Error('サーバーエラーが発生しました');
+        }
+        const tasks = await response.json();
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
 
-      tasks.forEach((task, index) => {
-        const div = document.createElement('div');
-        div.className = `task-item ${task.status === 'completed' ? 'completed' : ''}`;
-        
-        const badge = (index < 3 && task.status === 'pending') ? '<span class="badge">最優先</span> ' : '';
+        // tasks が配列であることを安全に確認してからループを回す
+        if (Array.isArray(tasks)) {
+          tasks.forEach((task, index) => {
+            const div = document.createElement('div');
+            div.className = `task-item ${task.status === 'completed' ? 'completed' : ''}`;
+            
+            const badge = (index < 3 && task.status === 'pending') ? '<span class="badge">最優先</span> ' : '';
 
-        div.innerHTML = `
-          <div>
-            <div class="task-title">${badge}${task.title} <small style="color:var(--text-sub); font-weight: normal;">(ID: ${task.id})</small></div>
-            <div class="task-meta">
-              期限: ${new Date(task.deadline).toLocaleString()} | 見積: ${task.estimated_minutes}分
-              ${task.parent_id ? ` | <span style="color: #6366f1;">親: ID ${task.parent_id}</span>` : ''}
-            </div>
-          </div>
-          <div>
-            ${task.status === 'pending' 
-              ? `<button class="btn-complete" onclick="completeTask(${task.id})">完了する</button>` 
-              : '<span class="text-completed">✓ 完了済</span>'}
-          </div>
-        `;
-        taskList.appendChild(div);
-      });
+            div.innerHTML = `
+              <div>
+                <div class="task-title">${badge}${task.title} <small style="color:var(--text-sub); font-weight: normal;">(ID: ${task.id})</small></div>
+                <div class="task-meta">
+                  期限: ${new Date(task.deadline).toLocaleString()} | 見積: ${task.estimated_minutes}分
+                  ${task.parent_id ? ` | <span style="color: #6366f1;">親: ID ${task.parent_id}</span>` : ''}
+                </div>
+              </div>
+              <div>
+                ${task.status === 'pending' 
+                  ? `<button class="btn-complete" onclick="completeTask(${task.id})">完了する</button>` 
+                  : '<span class="text-completed">✓ 完了済</span>'}
+              </div>
+            `;
+            taskList.appendChild(div);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+      }
     }
 
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
