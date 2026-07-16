@@ -4,7 +4,8 @@
   "type": "module",
 "scripts": {
   "start": "node index.cjs",
-  "build": "npx prisma generate"
+  "build": "npx prisma generate",
+  "db:dev": "DATABASE_URL=\"file:./prisma/dev.db\" npx prisma db push"
 },
   "devDependencies": {
     "@types/express": "^5.0.6",

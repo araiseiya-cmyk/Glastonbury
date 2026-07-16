@@ -13,8 +13,14 @@ model Task {
   title             String
   deadline          DateTime
   estimated_minutes Int
-  status            String   @default("pending")
+  status            String   // 'pending' (未完了), 'completed' (完了)
   parent_id         Int?
+
+  // 👇 定期タスク用のカラムを追加！
+  is_recurring      Boolean  @default(false)      // 定期タスクかどうか
+  recurrence_type   String?  // 'daily' (毎日), 'weekly' (毎週), null (単発)
+  recurrence_day    Int?     // 毎週の場合の曜日 (0: 日曜, 1: 月曜 ... 6: 土曜)
+  recurrence_time   String?  // 毎日の場合の「時分」 (例: "09:00", "21:30")
 }
 
 model User {
